@@ -1,0 +1,5 @@
+
+    post/api/registration -> 500er bei 2x registration
+
+    post/api/boards -> Response anpassen
+    patch/api/taskId -> Response anpassen
