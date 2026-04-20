@@ -4,12 +4,11 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView 
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError, NotFound , PermissionDenied
-from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError, NotFound, PermissionDenied
 
 
 from kanban_app.models import Board, Column, Task, Comment
-from kanban_app.api.serializer import BoardCreateSerializer, BoardListSerializer, BoardDetailSerializer, BoardUpdateSerializer, TaskSerializer, TaskCreateSerializer, TaskUpdateSerializer, CommentSerializer, CommentCreateSerializer, BoardPatchSerializer, BoardMembersSerializer
+from kanban_app.api.serializer import BoardCreateSerializer, BoardListSerializer, BoardDetailSerializer, BoardUpdateSerializer, TaskSerializer, TaskCreateSerializer, TaskUpdateSerializer, CommentSerializer, CommentCreateSerializer, BoardMembersSerializer, TaskPatchSerializer
 from kanban_app.api.permissions import IsBoardOwnerOrMember, CanDeleteTask 
 
 
@@ -51,14 +50,12 @@ class BoardViewSet(viewsets.ModelViewSet):
 
     
     def create(self, request, *args, **kwargs):
-        # 1. Board erstellen (mit CreateSerializer)
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         board = serializer.save()
 
-        # 2. Response mit BoardListSerializer zurückgeben
-        # output_serializer = BoardListSerializer(board)
-        return Response(BoardDetailSerializer(board).data, status=status.HTTP_201_CREATED)
+        return Response(BoardListSerializer(board).data, status=status.HTTP_201_CREATED)
     
 
     def partial_update(self, request, *args, **kwargs):
@@ -76,8 +73,18 @@ class BoardViewSet(viewsets.ModelViewSet):
 
 class TaskViewSet(ModelViewSet):
     queryset = Task.objects.all()
-    permission_classes = [IsAuthenticated, CanDeleteTask] # IsBoardOwnerOrMember]
+    permission_classes = [IsAuthenticated, CanDeleteTask] 
 
+
+    def partial_update(self, request, *args, **kwargs):
+        task = self.get_object()
+
+        serializer = TaskUpdateSerializer(task, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        read_serializer = TaskPatchSerializer(task)
+        return Response(read_serializer.data, status=200)
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -129,7 +136,7 @@ class TaskAssignedToMeView(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return (Task.objects.filter(assignee=user).select_related('assignee', 'reviewer'))
+        return (Task.objects.filter(assignee=user).select_related('assignee', 'reviewer').prefetch_related('comments'))
     
 
 
@@ -140,7 +147,7 @@ class TaskReviewerView(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return (Task.objects.filter(reviewer=user).select_related('assignee', 'reviewer'))
+        return (Task.objects.filter(reviewer=user).select_related('assignee', 'reviewer').prefetch_related('comments'))
     
 
 

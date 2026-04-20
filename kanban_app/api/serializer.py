@@ -1,8 +1,6 @@
 from rest_framework import serializers
-from rest_framework.response import Response
 
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
 
 
 from kanban_app.models import Board, Task, Column, Comment
@@ -43,11 +41,19 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
 
 
 class TaskUserSerializer(serializers.ModelSerializer):
+    fullname = serializers.SerializerMethodField()
 
 
     class Meta:
         model = User
         fields = ['id', 'email', 'fullname']
+
+    
+    def get_fullname(self, obj):
+
+        if not hasattr(obj, 'first_name') or not hasattr(obj, 'last_name'): return obj.email
+        full = f'{obj.first_name} {obj.last_name}'.strip()
+        return full if full else obj.email
 
 
 
@@ -65,15 +71,17 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
 
 class TaskPatchSerializer(serializers.ModelSerializer):
+    assignee = TaskUserSerializer(read_only=True)
+    reviewer = TaskUserSerializer(read_only=True)
 
 
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description']
+        fields = [ 'id', 'title', 'description', 'status', 'priority', 'assignee', 'reviewer', 'due_date']
 
 
 
-class TaskSerializer(serializers.ModelSerializer):
+class TaskSerializerforBoardDetail(serializers.ModelSerializer):
     assignee = UserSerializer(read_only=True)
     reviewer = UserSerializer(read_only=True)
     comments_count = serializers.SerializerMethodField()
@@ -81,7 +89,24 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id',  'title', 'description', 'status', 'priority', 'assignee', 'reviewer', 'due_date', 'comments_count']
+        fields = [ 'id', 'title', 'description', 'status', 'priority', 'assignee', 'reviewer', 'due_date', 'comments_count']
+
+    
+    def get_comments_count(self, task):
+        return task.comments.count()
+
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    assignee = UserSerializer(read_only=True)
+    reviewer = UserSerializer(read_only=True)
+    board = serializers.IntegerField(source='board.id', read_only=True)
+    comments_count = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = Task
+        fields = ['id', 'board', 'title', 'description', 'status', 'priority', 'assignee', 'reviewer', 'due_date', 'comments_count']
 
     def get_comments_count(self, task):
         return task.comments.count()
@@ -121,7 +146,11 @@ class BoardCreateSerializer(serializers.ModelSerializer):
 class BoardListSerializer(serializers.ModelSerializer): 
     title = serializers.CharField(source='name')
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
+
     member_count = serializers.SerializerMethodField()
+    ticket_count = serializers.SerializerMethodField()
+    tasks_to_do_count = serializers.SerializerMethodField()
+    tasks_high_prio_count = serializers.SerializerMethodField()
     
 
     class Meta: 
@@ -129,8 +158,20 @@ class BoardListSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count', 'owner_id']
 
     
-    def get_member_count(self, obj):
-        return obj.members.count()
+    def get_member_count(self, board):
+        return board.members.count()
+    
+
+    def get_ticket_count(self, board):
+        return board.tasks.count()
+    
+
+    def get_tasks_to_do_count(self, board):
+        return board.tasks.filter(status='to-do').count()
+    
+
+    def get_tasks_high_prio_count(self, board):
+        return board.tasks.filter(priority='high').count()
 
 
 
@@ -138,10 +179,7 @@ class BoardDetailSerializer(serializers.ModelSerializer):
     title = serializers.CharField(source='name')
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
     members = UserSerializer(many=True, read_only=True)
-    tasks = serializers.SerializerMethodField()
-
-    # owner_data = UserSerializer(source='owner', read_only=True)
-    # members_data = UserSerializer(source='members', many=True, read_only=True)
+    tasks = TaskSerializerforBoardDetail(many=True, read_only=True) 
 
 
     class Meta: 

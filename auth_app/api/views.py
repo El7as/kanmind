@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.authtoken.models import Token
 
@@ -11,7 +11,6 @@ from django.utils.decorators import method_decorator
 
 
 from auth_app.api.serializer import UserCreateSerializer, UserSerializer
-from auth_app.api.permissions import IsNotAuthenticated
 
 
 
@@ -53,10 +52,7 @@ class EmailLoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
-        # 500 Fehler
-        if request.data.get('email') == 'Test500@Fehler.de':
-            x = 1 / 0
-
+    
         if not email or not password:
             return Response({'message': 'email and password required'}, status=status.HTTP_400_BAD_REQUEST)
         

@@ -3,10 +3,6 @@ from django.conf import settings
 
 
 
-# Create your models here.
-
-
-
 class Board(models.Model):
     name = models.CharField(max_length=250)
     description = models.TextField(blank=True)

@@ -3,7 +3,7 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.contrib.auth import get_user_model
 
 
-from kanban_app.models import Board, Column, Task
+from kanban_app.models import Board, Column
 
 
 
