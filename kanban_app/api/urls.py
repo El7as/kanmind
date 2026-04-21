@@ -13,8 +13,8 @@ router.register('tasks', TaskViewSet, basename='tasks')
 
 
 urlpatterns = [
-    path('tasks-assigned-to-me/', TaskAssignedToMeView.as_view(), name='tasks-assigned-to-me'),
-    path('tasks-reviewing/', TaskReviewerView.as_view(), name='tasks-reviewing'),
+    path('tasks/assigned-to-me/', TaskAssignedToMeView.as_view()),
+    path('tasks/reviewing/', TaskReviewerView.as_view()),
     path('tasks/<int:task_id>/comments/', TaskCommentView.as_view()),
     path('tasks/<int:task_id>/comments/<int:comment_id>/', TaskCommentView.as_view()),
 ]
