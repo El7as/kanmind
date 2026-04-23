@@ -22,4 +22,21 @@ urlpatterns = [
 urlpatterns += router.urls
 
 
+"""
+URL configuration for the Kanban API.
+
+This module defines all API endpoints for boards, tasks, comments,
+and user‑specific task views. It combines DRF routers for ViewSets
+with manually defined paths for custom API endpoints.
+
+Endpoints:
+    /boards/                     - CRUD operations for boards
+    /tasks/                      - CRUD operations for tasks
+    /tasks/assigned-to-me/       - Lists tasks assigned to the current user
+    /tasks/reviewing/            - Lists tasks where the user is reviewer
+    /tasks/<task_id>/comments/   - List and create comments for a task
+    /tasks/<task_id>/comments/<comment_id>/ - Retrieve or delete a comment
+"""
+
+
 

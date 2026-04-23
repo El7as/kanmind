@@ -12,6 +12,19 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for representing user information in task and board responses.
+
+    Fields:
+        id (int): Primary key of the user.
+        email (str): Email address of the user.
+        fullname (str): Computed full name (first + last name). Falls back to username.
+
+    Notes:
+        - get_fullname handles both User instances and integer IDs.
+    """
+
     fullname = serializers.SerializerMethodField()
 
 
@@ -30,6 +43,23 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class TaskUpdateSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for updating an existing task (PATCH or PUT).
+
+    Fields:
+        title (str): Optional updated title.
+        description (str): Optional updated description.
+        status (str): Updated workflow state.
+        priority (str): Updated priority.
+        assignee_id (int): User ID of the new assignee.
+        reviewer_id (int): User ID of the new reviewer.
+        due_date (date): Updated deadline.
+
+    Notes:
+        - assignee_id and reviewer_id map to the actual FK fields via 'source'.
+    """
+
     assignee_id =serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='assignee', write_only=True, required=False)
     reviewer_id =serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='reviewer', write_only=True, required=False)
 
@@ -41,6 +71,16 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
 
 
 class TaskUserSerializer(serializers.ModelSerializer):
+
+    """
+    Lightweight user serializer for embedding user info inside task responses.
+
+    Fields:
+        id (int)
+        email (str)
+        fullname (str): Computed full name or email fallback.
+    """
+
     fullname = serializers.SerializerMethodField()
 
 
@@ -58,6 +98,25 @@ class TaskUserSerializer(serializers.ModelSerializer):
 
 
 class TaskCreateSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for creating new tasks.
+
+    Fields:
+        board (int): ID of the board the task belongs to.
+        title (str)
+        description (str)
+        status (str)
+        priority (str)
+        assignee_id (int)
+        reviewer_id (int)
+        due_date (date)
+
+    Notes:
+        - board is validated in the ViewSet.
+        - assignee_id and reviewer_id map to FK fields.
+    """
+
     board = serializers.IntegerField()
     assignee_id =serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='assignee', write_only=True, required=False)
     reviewer_id =serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='reviewer', write_only=True, required=False)
@@ -71,6 +130,21 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
 
 class TaskPatchSerializer(serializers.ModelSerializer):
+
+    """
+    Read-only serializer for returning updated task data after PATCH.
+
+    Fields:
+        id (int)
+        title (str)
+        description (str)
+        status (str)
+        priority (str)
+        assignee (User)
+        reviewer (User)
+        due_date (date)
+    """
+
     assignee = TaskUserSerializer(read_only=True)
     reviewer = TaskUserSerializer(read_only=True)
 
@@ -82,6 +156,14 @@ class TaskPatchSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializerforBoardDetail(serializers.ModelSerializer):
+
+    """
+    Serializer for embedding tasks inside BoardDetail responses.
+
+    Adds:
+        comments_count (int): Number of comments on the task.
+    """
+
     assignee = UserSerializer(read_only=True)
     reviewer = UserSerializer(read_only=True)
     comments_count = serializers.SerializerMethodField()
@@ -98,6 +180,15 @@ class TaskSerializerforBoardDetail(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
+
+    """
+    Full task serializer for list and detail views.
+
+    Adds:
+        board (int): Board ID.
+        comments_count (int)
+    """
+
     assignee = UserSerializer(read_only=True)
     reviewer = UserSerializer(read_only=True)
     board = serializers.IntegerField(source='board.id', read_only=True)
@@ -115,7 +206,14 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class ColumnSerializer(serializers.ModelSerializer): 
 
-    
+    """
+    Serializer for Kanban columns.
+
+    Fields:
+        id (int)
+        title (str)
+        position (int)
+    """
     class Meta:
         model = Column 
         fields = 'id', 'title', 'position'
@@ -123,6 +221,20 @@ class ColumnSerializer(serializers.ModelSerializer):
 
 
 class BoardCreateSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for creating new boards.
+
+    Fields:
+        title (str): Mapped to Board.name.
+        members (list[int]): Optional list of user IDs.
+
+    Notes:
+        - The request user becomes owner AND member.
+        - Additional members are added automatically.
+    """
+
+
     title = serializers.CharField(source='name')
     members = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), required=False)
 
@@ -144,6 +256,17 @@ class BoardCreateSerializer(serializers.ModelSerializer):
 
 
 class BoardListSerializer(serializers.ModelSerializer): 
+
+    """
+    Serializer for listing boards with computed statistics.
+
+    Adds:
+        member_count (int)
+        ticket_count (int)
+        tasks_to_do_count (int)
+        tasks_high_prio_count (int)
+    """
+
     title = serializers.CharField(source='name')
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
 
@@ -176,6 +299,18 @@ class BoardListSerializer(serializers.ModelSerializer):
 
 
 class BoardDetailSerializer(serializers.ModelSerializer): 
+
+    """
+    Detailed board serializer including members and tasks.
+
+    Fields:
+        id (int)
+        title (str)
+        owner_id (int)
+        members (list[User])
+        tasks (list[Task])
+    """
+
     title = serializers.CharField(source='name')
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
     members = UserSerializer(many=True, read_only=True)
@@ -194,6 +329,18 @@ class BoardDetailSerializer(serializers.ModelSerializer):
 
 
 class BoardUpdateSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for updating board metadata.
+
+    Fields:
+        title (str): Mapped to Board.name.
+        members (list[int]): New member list.
+
+    Notes:
+        - Members are fully replaced using .set().
+    """
+
     title = serializers.CharField(source='name', required=False )
     members = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many= True)
 
@@ -216,6 +363,14 @@ class BoardUpdateSerializer(serializers.ModelSerializer):
 
 
 class BoardPatchSerializer(serializers.ModelSerializer):
+
+    """
+    Read-only serializer for returning updated board data after PATCH.
+
+    Adds:
+        tasks (list[TaskPatchSerializer])
+    """
+
     title = serializers.CharField(source='name')
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
     members = UserSerializer(many=True, read_only=True)
@@ -234,6 +389,17 @@ class BoardPatchSerializer(serializers.ModelSerializer):
 
 
 class BoardMembersSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for returning board membership information.
+
+    Fields:
+        id (int)
+        title (str)
+        owner_data (User)
+        members_data (list[User])
+    """
+
     title = serializers.CharField(source='name', read_only=True )
     owner_data = UserSerializer(source='owner', read_only=True)
     members_data = UserSerializer(source='members', many=True, read_only=True)
@@ -246,6 +412,17 @@ class BoardMembersSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for returning comment data.
+
+    Fields:
+        id (int)
+        created_at (datetime)
+        author (str): Full name or username.
+        content (str)
+    """
+
     author = serializers.SerializerMethodField()
 
 
@@ -262,6 +439,12 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class CommentCreateSerializer(serializers.ModelSerializer):
     
+    """
+    Serializer for creating new comments.
+
+    Fields:
+        content (str): The comment text.
+    """
 
     class Meta:
         model = Comment

@@ -18,6 +18,23 @@ User = get_user_model()
 @api_view(['GET'])
 
 def email_check(request):
+
+    """
+    Check whether an email address is already registered.
+
+    Query Parameters:
+        email (str): The email address to check.
+
+    Responses:
+        200: Email exists → returns serialized user data.
+        404: Email does not exist.
+        400: Missing 'email' parameter.
+
+    Use cases:
+        - Frontend validation during registration.
+        - Checking availability of an email.
+    """
+
     email = request.query_params.get('email')
 
     if not email:
@@ -32,6 +49,28 @@ def email_check(request):
 
 
 class RegisterView(APIView):
+
+    """
+    Register a new user account.
+
+    Permissions:
+        - AllowAny: Anyone can register.
+
+    Behavior:
+        - Validates user data via UserCreateSerializer.
+        - Creates the user.
+        - Returns an authentication token and basic user info.
+
+    Response:
+        201 Created:
+            {
+                "token": "...",
+                "fullname": "John Doe",
+                "email": "john@example.com",
+                "user_id": 1
+            }
+    """
+
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -46,6 +85,22 @@ class RegisterView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class EmailLoginView(APIView):
+
+    """
+    Login using email + password.
+
+    Permissions:
+        - AllowAny: Login must be publicly accessible.
+
+    Behavior:
+        - Validates email and password.
+        - Returns token + user info on success.
+        - Returns 400 on invalid credentials.
+
+    Notes:
+        - CSRF exempt because token authentication is used.
+    """
+
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -71,6 +126,25 @@ class EmailLoginView(APIView):
 
 
 class LogoutView(APIView):
+
+    """
+    Logout the current user by deleting their authentication token.
+
+    Permissions:
+        - IsAuthenticated: Only logged-in users can log out.
+
+    Behavior:
+        - Deletes the user's token if present.
+        - Returns 200 on success.
+        - Returns 400 if no token exists.
+
+    Response:
+        200:
+            {"detail": "Logout successful. Token deleted."}
+        400:
+            {"detail": "No token present"}
+    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
