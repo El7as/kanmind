@@ -31,7 +31,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     Returns:
         User instance.
     """
-
+    
+    fullname = serializers.CharField()
     password = serializers.CharField(write_only=True, validators=[validate_password])
     repeated_password = serializers.CharField(write_only=True)
 
