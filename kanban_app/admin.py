@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 
-from kanban_app.models import Board, Column, Task
+from kanban_app.models import Board, Column, Task, Comment
 
 
 
@@ -36,7 +36,7 @@ admin.site.register(Task)
         - Search and filtering options.
     """
 
-
+admin.site.register(Comment)
 
 
 def save_model(self, request, obj, form, change):

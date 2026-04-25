@@ -49,7 +49,7 @@ class IsBoardOwnerOrMember(BasePermission):
 
 
     def has_permission(self, request, view):
-        user = request.user
+        return True
 
 
     def has_object_permission(self, request, view, obj):

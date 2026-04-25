@@ -270,10 +270,10 @@ class BoardListSerializer(serializers.ModelSerializer):
     title = serializers.CharField(source='name')
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
 
-    member_count = serializers.SerializerMethodField()
-    ticket_count = serializers.SerializerMethodField()
-    tasks_to_do_count = serializers.SerializerMethodField()
-    tasks_high_prio_count = serializers.SerializerMethodField()
+    member_count = serializers.IntegerField(read_only=True)
+    ticket_count = serializers.IntegerField(read_only=True)
+    tasks_to_do_count = serializers.IntegerField(read_only=True)
+    tasks_high_prio_count = serializers.IntegerField(read_only=True)
     
 
     class Meta: 

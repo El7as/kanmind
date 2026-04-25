@@ -7,17 +7,18 @@ from kanban_app.api.views import BoardViewSet, TaskAssignedToMeView, TaskReviewe
 
 
 
-router = DefaultRouter()
-router.register('boards', BoardViewSet, basename='boards')
-router.register('tasks', TaskViewSet, basename='tasks')
-
-
 urlpatterns = [
     path('tasks/assigned-to-me/', TaskAssignedToMeView.as_view()),
     path('tasks/reviewing/', TaskReviewerView.as_view()),
+    
     path('tasks/<int:task_id>/comments/', TaskCommentView.as_view()),
     path('tasks/<int:task_id>/comments/<int:comment_id>/', TaskCommentView.as_view()),
 ]
+
+
+router = DefaultRouter()
+router.register('boards', BoardViewSet, basename='boards')
+router.register('tasks', TaskViewSet, basename='tasks')
 
 urlpatterns += router.urls
 

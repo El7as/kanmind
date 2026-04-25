@@ -40,10 +40,22 @@ class BoardViewSet(viewsets.ModelViewSet):
 
     queryset = Board.objects.all()
 
-
+    
     def get_queryset(self):
+        user = self.request.user
         # Return all boards. Filtering is handled by permissions.
+                
+        board_id = self.request.query_params.get("id")
+        if board_id and board_id.isdigit():
+            return Board.objects.filter(pk=board_id)
+
+        # Normale Liste
+        if self.action == 'list':
+            return Board.objects.filter(Q(owner=user) | Q(members=user)).distinct()
+
         return Board.objects.all()
+
+
 
 
     def get_permissions(self):
@@ -58,7 +70,12 @@ class BoardViewSet(viewsets.ModelViewSet):
 
 
     def get_serializer_class(self):
-        # Return serializer depending on the action.
+         # Return serializer depending on the action.
+
+        board_id = self.request.query_params.get("id")
+        if board_id:
+            return BoardDetailSerializer
+
         if self.action == 'create':
             return BoardCreateSerializer
         if self.action == 'list':
@@ -67,7 +84,9 @@ class BoardViewSet(viewsets.ModelViewSet):
             return BoardDetailSerializer
         if self.action in ['update', 'partial_update']:
             return BoardUpdateSerializer
+
         return BoardDetailSerializer
+
     
 
     def perform_create(self, serializer):
@@ -94,8 +113,17 @@ class BoardViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         # Return updated board with member information
 
-        super().partial_update(request, *args, **kwargs)
+        if not request.data:
+            return Response({'detail': 'The body must not be empty.'}, status=400)
+        
+        allowed_fields = {'title', 'members'}
+        if not any(field in request.data for field in allowed_fields):
+            return Response({'detail': 'Title or members must be sent'}, status=400)
+
         board = self.get_object()
+        serializer = BoardUpdateSerializer(board, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(BoardMembersSerializer(board).data)
     
 
@@ -105,6 +133,27 @@ class BoardViewSet(viewsets.ModelViewSet):
         super().update(request, *args, **kwargs)
         board = self.get_object()
         return Response(BoardMembersSerializer(board).data)
+    
+
+    def get_object(self):
+
+        if self.action in ['list', 'create']:
+            return None
+
+        if 'pk' not in self.kwargs:
+            return None
+
+        pk = self.kwargs['pk']
+
+        if pk in ('null', 'undefined', ''):
+            raise ValidationError({'detail': 'Board-ID missing'})
+        
+        if not str(pk).isdigit():
+            raise ValidationError({'detail': 'Invalid Board-ID'})
+        
+        board = super().get_object()
+        self.request.session['current_board_id'] = board.id     
+        return board
 
 
 
@@ -127,14 +176,6 @@ class TaskViewSet(ModelViewSet):
 
     queryset = Task.objects.all()
     
-
-    def get_permissions(self):
-        # Assign permissions based on action
-
-        if self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'create']:
-            return [IsAuthenticated(), CanAccessTask(), CanDeleteTask()]
-        return [IsAuthenticated()]
-
 
     def partial_update(self, request, *args, **kwargs):
         # Update selected fields of a task. Behavior: If body is empty → enforce required fields (400). Otherwise perform normal partial update.
@@ -171,28 +212,41 @@ class TaskViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-
         board_id = serializer.validated_data['board']
         try:
             board = Board.objects.get(id=board_id)
         except Board.DoesNotExist:
             raise NotFound(detail='Board not found')
-
+        
+        if board.owner != request.user and request.user not in board.members.all():
+            return Response({'detail': 'You do not have permission to perform this action'}, status=403)
 
         task = serializer.save(board=board, created_by=request.user)
         read_serializer = TaskSerializer(task, context={'request': request})
-        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(read_serializer.data, status=201)
     
 
     def get_object(self):
         # Validate task ID before retrieving.
 
-        pk = self.kwargs.get('pk')
-
-        if not str(pk).isdigit():
-            raise ValidationError({'detail': 'Invalid Task-ID'})
+        if self.action in ['retrieve', 'update','partial_update', 'destroy']:
+            pk = self.kwargs.get('pk')
+            
+            if not str(pk).isdigit():
+                raise ValidationError({'detail': 'Invalid Task-ID'})
+            return super().get_object()
 
         return super().get_object()
+    
+
+    def get_permissions(self):
+        # Assign permissions based on action
+
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), CanAccessTask(), CanDeleteTask()]
+        if self.action == 'create':
+            return [IsAuthenticated()]
+        return [IsAuthenticated()]
     
 
     def destroy(self, request, *args, **kwargs):

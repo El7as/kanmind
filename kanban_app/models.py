@@ -31,11 +31,24 @@ class Board(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL , on_delete=models.CASCADE, related_name='boards')
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='member_boards', blank=True)
 
-    member_count = models.IntegerField(default=0)
-    ticket_count = models.IntegerField(default=0)
-    tasks_to_do_count = models.IntegerField(default=0)
-    tasks_high_prio_count = models.IntegerField(default=0)
+    @property
+    def member_count(self):
+         return self.members.count()
+    
+    @property
+    def ticket_count(self):
+        return self.tasks.count()
 
+
+    @property
+    def tasks_to_do_count(self):
+        return self.tasks.filter(status='to-do').count()
+
+
+    @property
+    def tasks_high_prio_count(self):
+         return self.tasks.filter(priority='high').count()
+    
 
     def __str__(self):
         return self.name
@@ -83,7 +96,7 @@ class Task(models.Model):
 
         title (str): Short title describing the task.
         description (str): Optional detailed description.
-        status (str): Workflow state (to‑do, in‑progress, review, done).
+        status (str): Workflow state (to‑do, in‑progress, review, done). 
 
         assignee (User): User responsible for completing the task.
         reviewer (User): User responsible for reviewing the task.
