@@ -1,9 +1,0 @@
-get api/boards -> Permssion anpassen
-
-
-
----- Buttons
-Kommentare löschen
-Tasks bearbeiten
-Tasks schieben können
-boards bearbeiten können
